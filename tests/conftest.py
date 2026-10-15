@@ -1,0 +1,26 @@
+import os
+from collections.abc import AsyncIterator
+
+os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete
+
+from app import db as database
+from app.config import get_settings
+from app.main import app, prepare_database
+from app.models import Payment
+
+
+@pytest.fixture
+async def client() -> AsyncIterator[AsyncClient]:
+    get_settings.cache_clear()
+    prepare_database()
+    with database.SessionLocal() as session:
+        session.execute(delete(Payment))
+        session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as test_client:
+        yield test_client

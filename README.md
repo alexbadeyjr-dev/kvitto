@@ -1,0 +1,65 @@
+# Платежи Квитто
+
+Небольшой API, через который онлайн-школа принимает оплату курса: тарифы, платёж, вебхук банка.
+
+Суммы везде в копейках, целым числом. `amount` — сумма к оплате после скидки, `discount` — размер скидки. Промокод `KVITTO10` даёт 10%, регистр не важен. Для `card` и `sbp` поля `installment_months` и `schedule` пустые. У рассрочки график в копейках, лишние копейки попадают в первые платежи, сумма графика равна `amount`.
+
+Новый платёж в статусе `pending`. Допустимы переходы `pending → succeeded`, `pending → failed`, `succeeded → refunded`. Остальные, включая повтор того же статуса, отвечают `409` и статус не меняют.
+
+Заголовок `Idempotency-Key` после успешной валидации тела возвращает уже созданный платёж с кодом `200`, даже если второе тело другое. Без заголовка каждый запрос создаёт новый платёж. Неизвестный тариф и неизвестный платёж — `404`. Неизвестный промокод и неверные поля — стандартный `422` FastAPI.
+
+## Тесты
+
+Тесты поднимают SQLite в памяти, Docker для них не нужен.
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+pytest
+```
+
+На macOS и Linux активация другая: `source .venv/bin/activate`.
+
+## Запуск
+
+Нужны Docker и свободный порт 5432.
+
+```bash
+docker compose up --build
+```
+
+Сервис поднимется на http://localhost:8000. Документация: http://localhost:8000/docs.
+
+Остановка: `docker compose down`.
+
+## Примеры
+
+Список тарифов:
+
+```bash
+curl http://localhost:8000/tariffs
+```
+
+Оплата standard картой:
+
+```bash
+curl -X POST http://localhost:8000/payments -H "Content-Type: application/json" -H "Idempotency-Key: order-1" -d "{\"tariff_id\":\"standard\",\"email\":\"student@example.com\",\"method\":\"card\"}"
+```
+
+Рассрочка standard на 3 месяца. В ответе `schedule` будет `[663334, 663333, 663333]`.
+
+```bash
+curl -X POST http://localhost:8000/payments -H "Content-Type: application/json" -d "{\"tariff_id\":\"standard\",\"email\":\"student@example.com\",\"method\":\"installment\",\"installment_months\":3}"
+```
+
+Платёж и вебхук банка. Подставьте `id` из ответа создания.
+
+```bash
+curl http://localhost:8000/payments/{id}
+curl -X POST http://localhost:8000/webhooks/bank -H "Content-Type: application/json" -d "{\"payment_id\":\"{id}\",\"status\":\"succeeded\"}"
+```
+
+В PowerShell для этих команд нужна программа `curl.exe`: встроенный `curl` там вызывает другой командлет.
+
+Повтор того же `Idempotency-Key` вернёт первый платёж и код `200`. Повторный `curl` без ключа создаст второй платёж.
