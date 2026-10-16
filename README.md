@@ -18,10 +18,13 @@
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+ruff check .
 pytest
 ```
 
 На macOS и Linux активация другая: `source .venv/bin/activate`.
+
+Те же `ruff check .` и `pytest` запускает GitHub Actions на каждый push и pull request, на Python 3.11 и 3.12: `.github/workflows/ci.yml`.
 
 ## Запуск
 

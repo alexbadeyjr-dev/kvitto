@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import func, select
@@ -54,7 +54,7 @@ def create_payment(
         schedule=schedule,
         email=str(data.email),
         idempotency_key=idempotency_key,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     session.add(payment)
     try:
