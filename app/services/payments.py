@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -113,6 +113,22 @@ def get_payment(session: Session, payment_id: str) -> Payment:
     if payment is None:
         raise PaymentNotFound
     return payment
+
+
+def list_payments(
+    session: Session,
+    email: str | None,
+    status: str | None,
+    limit: int,
+    offset: int,
+) -> list[Payment]:
+    query = select(Payment)
+    if email:
+        query = query.where(func.lower(Payment.email) == email.strip().lower())
+    if status:
+        query = query.where(Payment.status == status)
+    query = query.order_by(Payment.created_at.desc(), Payment.id).limit(limit).offset(offset)
+    return list(session.scalars(query))
 
 
 def _find_by_key(session: Session, idempotency_key: str) -> Payment | None:

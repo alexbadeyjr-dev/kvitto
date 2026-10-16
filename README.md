@@ -67,6 +67,13 @@ curl -X POST http://localhost:8000/webhooks/bank -H "Content-Type: application/j
 
 Подпись считается от тела байт в байт: если после подписи поменять в `BODY` хоть пробел, ответ будет `401`.
 
+Список платежей с фильтрами. Оба фильтра необязательные, `email` сравнивается без учёта регистра, неизвестный `status` — `422`. Сначала новые, по умолчанию 50 записей, `limit` до 100, есть `offset`.
+
+```bash
+curl "http://localhost:8000/payments?email=student@example.com&status=pending"
+curl "http://localhost:8000/payments?limit=10&offset=10"
+```
+
 В PowerShell для этих команд нужна программа `curl.exe`: встроенный `curl` там вызывает другой командлет.
 
 Повтор того же `Idempotency-Key` вернёт первый платёж и код `200`. Повторный `curl` без ключа создаст второй платёж.

@@ -238,3 +238,41 @@ async def test_webhook_requires_valid_signature(client: AsyncClient) -> None:
     assert signed.status_code == 200
     assert signed.json() == {"result": "ok"}
     assert await current_status() == "succeeded"
+
+
+async def test_list_payments_filters_by_email_and_status(client: AsyncClient) -> None:
+    first = (await post_payment(client, email="anna@example.com")).json()
+    second = (await post_payment(client, email="anna@example.com", tariff_id="basic")).json()
+    other = (await post_payment(client, email="boris@example.com")).json()
+    assert (await post_webhook(client, {"payment_id": second["id"], "status": "succeeded"})).status_code == 200
+
+    everything = await client.get("/payments")
+    assert everything.status_code == 200
+    assert {item["id"] for item in everything.json()} == {first["id"], second["id"], other["id"]}
+
+    by_email = await client.get("/payments", params={"email": "ANNA@example.com"})
+    assert by_email.status_code == 200
+    assert {item["id"] for item in by_email.json()} == {first["id"], second["id"]}
+
+    by_status = await client.get("/payments", params={"status": "succeeded"})
+    assert [item["id"] for item in by_status.json()] == [second["id"]]
+    assert by_status.json()[0]["status"] == "succeeded"
+    assert by_status.json()[0]["amount"] == 990_000
+
+    both = await client.get("/payments", params={"email": "boris@example.com", "status": "pending"})
+    assert [item["id"] for item in both.json()] == [other["id"]]
+
+    nothing = await client.get("/payments", params={"email": "boris@example.com", "status": "succeeded"})
+    assert nothing.status_code == 200
+    assert nothing.json() == []
+
+    page = await client.get("/payments", params={"limit": 2})
+    assert len(page.json()) == 2
+    rest = await client.get("/payments", params={"limit": 2, "offset": 2})
+    assert len(rest.json()) == 1
+    assert {item["id"] for item in page.json() + rest.json()} == {first["id"], second["id"], other["id"]}
+
+    unknown_status = await client.get("/payments", params={"status": "paid"})
+    assert unknown_status.status_code == 422
+    too_big = await client.get("/payments", params={"limit": 1000})
+    assert too_big.status_code == 422
