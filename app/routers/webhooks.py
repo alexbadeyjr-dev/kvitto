@@ -1,19 +1,20 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter
 
-from app.dependencies import PaymentServiceDep, WebhookSignatureDep
-from app.schemas import WebhookIn
-from app.services.exceptions import InvalidTransition, PaymentNotFound
+from app import swagger
+from app.dependencies import PaymentServiceDep, WebhookBody, WebhookSignatureDep
+from app.schemas import WebhookOut
 
 router = APIRouter(tags=["webhooks"])
 
 
-@router.post("/webhooks/bank", response_model=None, dependencies=[WebhookSignatureDep])
-def bank_webhook(payload: WebhookIn, service: PaymentServiceDep) -> JSONResponse:
-    try:
-        service.apply_bank_status(payload.payment_id, payload.status)
-    except PaymentNotFound:
-        raise HTTPException(status_code=404, detail="Платёж не найден") from None
-    except InvalidTransition:
-        return JSONResponse(status_code=409, content={"error": "invalid_transition"})
-    return JSONResponse(status_code=200, content={"result": "ok"})
+@router.post(
+    "/webhooks/bank",
+    response_model=WebhookOut,
+    summary="Вебхук банка: смена статуса платежа",
+    description=swagger.bank_webhook_description,
+    responses=swagger.bank_webhook_responses,
+    dependencies=[WebhookSignatureDep],
+)
+def bank_webhook(payload: WebhookBody, service: PaymentServiceDep) -> WebhookOut:
+    service.apply_bank_status(payload.payment_id, payload.status)
+    return WebhookOut(result="ok")

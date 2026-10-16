@@ -1,5 +1,6 @@
 PROMO_CODE = "KVITTO10"
 PROMO_PERCENT = 10
+UNKNOWN_PROMO_MESSAGE = "Неизвестный промокод"
 
 
 def normalize_promo(promo_code: str | None) -> str | None:
@@ -7,7 +8,7 @@ def normalize_promo(promo_code: str | None) -> str | None:
         return None
     normalized = promo_code.strip()
     if normalized.upper() != PROMO_CODE:
-        raise ValueError("Неизвестный промокод")
+        raise ValueError(UNKNOWN_PROMO_MESSAGE)
     return normalized
 
 

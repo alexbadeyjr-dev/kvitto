@@ -1,12 +1,14 @@
 import logging
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Path, Query, Request
+from fastapi import Body, Depends, Header, Path, Query, Request
 from sqlalchemy.orm import Session
 
+from app import swagger
 from app.configs.settings import get_settings
 from app.db.session import get_db
-from app.schemas import PaymentStatus
+from app.schemas import PaymentCreate, PaymentStatus, WebhookIn
+from app.services.exceptions import InvalidSignature
 from app.services.payments import PaymentService
 from app.services.signature import is_valid_signature
 from app.services.tariffs import TariffService
@@ -37,10 +39,14 @@ async def verify_signature(
     secret = get_settings().webhook_secret.get_secret_value()
     if x_signature is None or not is_valid_signature(body, x_signature, secret):
         logger.warning("Вебхук с неверной подписью отклонён")
-        raise HTTPException(status_code=401, detail="Неверная подпись")
+        raise InvalidSignature
 
 
 SessionDep = Annotated[Session, Depends(get_db)]
+
+PaymentCreateBody = Annotated[PaymentCreate, Body(openapi_examples=swagger.payment_create_examples)]
+
+WebhookBody = Annotated[WebhookIn, Body(openapi_examples=swagger.webhook_examples)]
 
 
 def get_payment_service(db: SessionDep) -> PaymentService:

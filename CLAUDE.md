@@ -17,7 +17,8 @@ docker compose up --build   # Postgres + миграции + API на :8000
 
 Слои зависят только сверху вниз: роутер → сервис → репозиторий → модель.
 
-- `app/routers/` — только HTTP: принимают схемы и сервис из `dependencies.py`, переводят исключения сервиса в коды ответа. Сессию и `select` не трогают.
+- `app/routers/` — только HTTP: принимают схемы и сервис из `dependencies.py`. Сессию и `select` не трогают, `try/except` для ошибок сервиса не пишут.
+- `app/swagger.py` — тексты Swagger: общее описание с каталогом ошибок, `summary`/`description`/`responses` и примеры тел для каждой ручки.
 - `app/dependencies.py` — общие параметры ручек как `Annotated`-типы (`SessionDep`, `PaymentServiceDep`, `LimitQuery`, `IdempotencyKeyDep`…) и функции-зависимости (`verify_signature`). Новый параметр с `Query`/`Header`/`Depends` описывай там, а в ручке используй тип.
 - `app/services/` — бизнес-логика и границы транзакции: `commit`, `rollback`, `refresh` вызываются только здесь. `payments.py` — `PaymentService`, `tariffs.py` — `TariffService` и сид тарифов, `money.py` — промокод и график, `signature.py` — HMAC.
 - `app/repositories/` — все запросы к БД (`get`, `find`, `add`…). Репозиторий не коммитит и не содержит бизнес-правил.
@@ -37,7 +38,8 @@ docker compose up --build   # Postgres + миграции + API на :8000
 
 - Ручки — обычные `def`: сессия SQLAlchemy синхронная. `async def` только там, где нужен `await` (как `verify_signature` в `app/dependencies.py`).
 - `engine` и `SessionLocal` читать через модуль (`from app.db import session as database`), а не импортировать по имени: они создаются в `init_engine` после импорта.
-- Сервисы бросают исключения из `services/exceptions.py`, роутеры переводят их в коды ответа.
+- Ошибки — наследники `AppError` в `services/exceptions.py` с `status_code` и `body`. Обработчик в `main.py` отдаёт `as_dict()`, примеры в Swagger берут тот же `as_dict()`.
+- Новая ручка или ошибка — сразу опиши её в `app/swagger.py` и добавь в каталог ошибок в `openapi_description`. `tests/test_docs.py` сверяет примеры с реальными ответами и проверяет, что примеры тел проходят валидацию.
 - Логи — через `logging.getLogger("kvitto.<модуль>")`, сообщения по-русски, без секретов и подписей.
 - Тесты проверяют тело ответа и состояние базы, а не только код. Вебхуки в тестах отправлять через `post_webhook`, он подписывает тело.
 - Перед коммитом: `ruff check .` и `pytest` должны проходить.
