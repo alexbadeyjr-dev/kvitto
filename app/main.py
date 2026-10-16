@@ -7,8 +7,8 @@ from app import models  # noqa: F401  регистрирует таблицы в
 from app.configs.settings import get_settings
 from app.db import session as database
 from app.db.base import Base
-from app.db.seed import seed_tariffs
 from app.routers import payments, tariffs, webhooks
+from app.services.tariffs import TariffService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,7 +26,7 @@ def prepare_database() -> None:
     if settings.database_url.startswith("sqlite"):
         Base.metadata.create_all(database.engine)
     with database.SessionLocal() as session:
-        seed_tariffs(session)
+        TariffService(session).seed_defaults()
 
 
 @asynccontextmanager

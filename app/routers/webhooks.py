@@ -1,18 +1,17 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from app.dependencies import SessionDep, WebhookSignatureDep
+from app.dependencies import PaymentServiceDep, WebhookSignatureDep
 from app.schemas import WebhookIn
 from app.services.exceptions import InvalidTransition, PaymentNotFound
-from app.services.payments import apply_bank_status
 
 router = APIRouter(tags=["webhooks"])
 
 
 @router.post("/webhooks/bank", response_model=None, dependencies=[WebhookSignatureDep])
-def bank_webhook(payload: WebhookIn, db: SessionDep) -> JSONResponse:
+def bank_webhook(payload: WebhookIn, service: PaymentServiceDep) -> JSONResponse:
     try:
-        apply_bank_status(db, payload.payment_id, payload.status)
+        service.apply_bank_status(payload.payment_id, payload.status)
     except PaymentNotFound:
         raise HTTPException(status_code=404, detail="Платёж не найден") from None
     except InvalidTransition:

@@ -15,10 +15,13 @@ docker compose up --build   # Postgres + миграции + API на :8000
 
 ## Структура
 
-- `app/routers/` — только HTTP: коды ответов и перевод исключений сервиса в `HTTPException`.
-- `app/dependencies.py` — общие параметры ручек как `Annotated`-типы (`SessionDep`, `LimitQuery`, `IdempotencyKeyDep`…) и функции-зависимости (`verify_signature`). Новый параметр с `Query`/`Header`/`Depends` описывай там, а в ручке используй тип.
-- `app/services/` — бизнес-логика. `money.py` — промокод и график, `payments.py` — платежи и статусы, `signature.py` — HMAC.
-- `app/schemas/` — Pydantic v2, `app/models/` — SQLAlchemy 2.0, `app/db/` — сессия, `Base`, сид тарифов.
+Слои зависят только сверху вниз: роутер → сервис → репозиторий → модель.
+
+- `app/routers/` — только HTTP: принимают схемы и сервис из `dependencies.py`, переводят исключения сервиса в коды ответа. Сессию и `select` не трогают.
+- `app/dependencies.py` — общие параметры ручек как `Annotated`-типы (`SessionDep`, `PaymentServiceDep`, `LimitQuery`, `IdempotencyKeyDep`…) и функции-зависимости (`verify_signature`). Новый параметр с `Query`/`Header`/`Depends` описывай там, а в ручке используй тип.
+- `app/services/` — бизнес-логика и границы транзакции: `commit`, `rollback`, `refresh` вызываются только здесь. `payments.py` — `PaymentService`, `tariffs.py` — `TariffService` и сид тарифов, `money.py` — промокод и график, `signature.py` — HMAC.
+- `app/repositories/` — все запросы к БД (`get`, `find`, `add`…). Репозиторий не коммитит и не содержит бизнес-правил.
+- `app/schemas/` — Pydantic v2, `app/models/` — SQLAlchemy 2.0, `app/db/` — engine, сессия, `Base`.
 - `alembic/versions/` — миграции. Изменил модель — добавь миграцию, старую не правь.
 
 ## Правила, которые нельзя нарушать

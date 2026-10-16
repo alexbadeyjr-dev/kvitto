@@ -1,7 +1,6 @@
 from fastapi import APIRouter
-from sqlalchemy import select
 
-from app.dependencies import SessionDep
+from app.dependencies import TariffServiceDep
 from app.models import Tariff
 from app.schemas import TariffOut
 
@@ -9,5 +8,5 @@ router = APIRouter(tags=["tariffs"])
 
 
 @router.get("/tariffs", response_model=list[TariffOut])
-def list_tariffs(db: SessionDep) -> list[Tariff]:
-    return list(db.scalars(select(Tariff).order_by(Tariff.price)))
+def list_tariffs(service: TariffServiceDep) -> list[Tariff]:
+    return service.list_tariffs()

@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.configs.settings import get_settings
 from app.db.session import get_db
 from app.schemas import PaymentStatus
+from app.services.payments import PaymentService
 from app.services.signature import is_valid_signature
+from app.services.tariffs import TariffService
 
 logger = logging.getLogger("kvitto.dependencies")
 
@@ -39,6 +41,19 @@ async def verify_signature(
 
 
 SessionDep = Annotated[Session, Depends(get_db)]
+
+
+def get_payment_service(db: SessionDep) -> PaymentService:
+    return PaymentService(db)
+
+
+def get_tariff_service(db: SessionDep) -> TariffService:
+    return TariffService(db)
+
+
+PaymentServiceDep = Annotated[PaymentService, Depends(get_payment_service)]
+
+TariffServiceDep = Annotated[TariffService, Depends(get_tariff_service)]
 
 IdempotencyKeyDep = Annotated[str | None, Depends(get_idempotency_key)]
 
