@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.dependencies import SessionDep
 from app.models import Tariff
 from app.schemas import TariffOut
 
@@ -10,5 +9,5 @@ router = APIRouter(tags=["tariffs"])
 
 
 @router.get("/tariffs", response_model=list[TariffOut])
-def list_tariffs(db: Session = Depends(get_db)) -> list[Tariff]:
+def list_tariffs(db: SessionDep) -> list[Tariff]:
     return list(db.scalars(select(Tariff).order_by(Tariff.price)))

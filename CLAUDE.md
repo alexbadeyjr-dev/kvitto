@@ -15,7 +15,8 @@ docker compose up --build   # Postgres + миграции + API на :8000
 
 ## Структура
 
-- `app/routers/` — только HTTP: параметры, коды ответов, перевод исключений сервиса в `HTTPException`.
+- `app/routers/` — только HTTP: коды ответов и перевод исключений сервиса в `HTTPException`.
+- `app/dependencies.py` — общие параметры ручек как `Annotated`-типы (`SessionDep`, `LimitQuery`, `IdempotencyKeyDep`…) и функции-зависимости (`verify_signature`). Новый параметр с `Query`/`Header`/`Depends` описывай там, а в ручке используй тип.
 - `app/services/` — бизнес-логика. `money.py` — промокод и график, `payments.py` — платежи и статусы, `signature.py` — HMAC.
 - `app/schemas/` — Pydantic v2, `app/models/` — SQLAlchemy 2.0, `app/db/` — сессия, `Base`, сид тарифов.
 - `alembic/versions/` — миграции. Изменил модель — добавь миграцию, старую не правь.
@@ -31,7 +32,7 @@ docker compose up --build   # Postgres + миграции + API на :8000
 
 ## Как писать код
 
-- Ручки — обычные `def`: сессия SQLAlchemy синхронная. `async def` только там, где нужен `await` (как `verify_signature`).
+- Ручки — обычные `def`: сессия SQLAlchemy синхронная. `async def` только там, где нужен `await` (как `verify_signature` в `app/dependencies.py`).
 - `engine` и `SessionLocal` читать через модуль (`from app.db import session as database`), а не импортировать по имени: они создаются в `init_engine` после импорта.
 - Сервисы бросают исключения из `services/exceptions.py`, роутеры переводят их в коды ответа.
 - Логи — через `logging.getLogger("kvitto.<модуль>")`, сообщения по-русски, без секретов и подписей.

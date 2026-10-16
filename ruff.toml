@@ -3,8 +3,6 @@ line-length = 120
 
 [lint]
 select = ["E", "F", "W", "I", "UP", "B"]
-# Depends() и Query() в значениях по умолчанию — штатный приём FastAPI.
-ignore = ["B008"]
 
 [lint.isort]
 # Папка alembic/ в корне — это миграции, а импорт `alembic` — библиотека.
