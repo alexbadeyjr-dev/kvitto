@@ -6,13 +6,12 @@ from app.dependencies import (
     IdempotencyKeyDep,
     LimitQuery,
     OffsetQuery,
-    PaymentCreateBody,
     PaymentIdPath,
     PaymentServiceDep,
     PaymentStatusQuery,
 )
 from app.models import Payment
-from app.schemas import PaymentOut
+from app.schemas import PaymentCreate, PaymentOut
 
 router = APIRouter(tags=["payments"])
 
@@ -24,9 +23,10 @@ router = APIRouter(tags=["payments"])
     summary="Создать платёж",
     description=swagger.create_payment_description,
     responses=swagger.create_payment_responses,
+    openapi_extra=swagger.create_payment_openapi_extra,
 )
 def create(
-    payload: PaymentCreateBody,
+    payload: PaymentCreate,
     response: Response,
     service: PaymentServiceDep,
     idempotency_key: IdempotencyKeyDep,

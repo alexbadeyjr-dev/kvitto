@@ -1,13 +1,12 @@
 import logging
 from typing import Annotated
 
-from fastapi import Body, Depends, Header, Path, Query, Request
+from fastapi import Depends, Header, Path, Query, Request
 from sqlalchemy.orm import Session
 
-from app import swagger
 from app.configs.settings import get_settings
 from app.db.session import get_db
-from app.schemas import PaymentCreate, PaymentStatus, WebhookIn
+from app.schemas import PaymentStatus
 from app.services.exceptions import InvalidSignature
 from app.services.payments import PaymentService
 from app.services.signature import is_valid_signature
@@ -17,10 +16,7 @@ logger = logging.getLogger("kvitto.dependencies")
 
 
 def get_idempotency_key(
-    idempotency_key: Annotated[
-        str | None,
-        Header(alias="Idempotency-Key", description="Повтор с тем же ключом вернёт уже созданный платёж"),
-    ] = None,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> str | None:
     """Пустой ключ или ключ из одних пробелов считается отсутствующим."""
     key = idempotency_key.strip() if idempotency_key else None
@@ -29,10 +25,7 @@ def get_idempotency_key(
 
 async def verify_signature(
     request: Request,
-    x_signature: Annotated[
-        str | None,
-        Header(alias="X-Signature", description="HMAC-SHA256 от тела запроса в hex"),
-    ] = None,
+    x_signature: Annotated[str | None, Header(alias="X-Signature")] = None,
 ) -> None:
     """Проверяет подпись до разбора тела: без верной подписи ответ 401, даже если тело невалидно."""
     body = await request.body()
@@ -43,10 +36,6 @@ async def verify_signature(
 
 
 SessionDep = Annotated[Session, Depends(get_db)]
-
-PaymentCreateBody = Annotated[PaymentCreate, Body(openapi_examples=swagger.payment_create_examples)]
-
-WebhookBody = Annotated[WebhookIn, Body(openapi_examples=swagger.webhook_examples)]
 
 
 def get_payment_service(db: SessionDep) -> PaymentService:
@@ -65,12 +54,12 @@ IdempotencyKeyDep = Annotated[str | None, Depends(get_idempotency_key)]
 
 WebhookSignatureDep = Depends(verify_signature)
 
-PaymentIdPath = Annotated[str, Path(min_length=1, description="Идентификатор платежа")]
+PaymentIdPath = Annotated[str, Path(min_length=1)]
 
-EmailQuery = Annotated[str | None, Query(description="Email без учёта регистра")]
+EmailQuery = Annotated[str | None, Query()]
 
-PaymentStatusQuery = Annotated[PaymentStatus | None, Query(description="Статус платежа")]
+PaymentStatusQuery = Annotated[PaymentStatus | None, Query()]
 
-LimitQuery = Annotated[int, Query(ge=1, le=100, description="Сколько записей вернуть, до 100")]
+LimitQuery = Annotated[int, Query(ge=1, le=100)]
 
-OffsetQuery = Annotated[int, Query(ge=0, description="Сколько записей пропустить")]
+OffsetQuery = Annotated[int, Query(ge=0)]

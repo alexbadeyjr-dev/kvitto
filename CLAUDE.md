@@ -18,7 +18,8 @@ docker compose up --build   # Postgres + миграции + API на :8000
 Слои зависят только сверху вниз: роутер → сервис → репозиторий → модель.
 
 - `app/routers/` — только HTTP: принимают схемы и сервис из `dependencies.py`. Сессию и `select` не трогают, `try/except` для ошибок сервиса не пишут.
-- `app/swagger.py` — тексты Swagger: общее описание с каталогом ошибок, `summary`/`description`/`responses` и примеры тел для каждой ручки.
+- `app/swagger.py` — тексты Swagger: общее описание с каталогом ошибок, `description`/`responses`/`openapi_extra` (примеры тел) для каждой ручки.
+  Документация подключается **только в декораторе ручки** (`summary=`, `description=swagger.…`, `responses=swagger.…`, `openapi_extra=swagger.…`). В схемах, `dependencies.py` и сервисах никаких `description=`, `examples=`, `openapi_examples=` — параметры ручки описываются в её `description`.
 - `app/dependencies.py` — общие параметры ручек как `Annotated`-типы (`SessionDep`, `PaymentServiceDep`, `LimitQuery`, `IdempotencyKeyDep`…) и функции-зависимости (`verify_signature`). Новый параметр с `Query`/`Header`/`Depends` описывай там, а в ручке используй тип.
 - `app/services/` — бизнес-логика и границы транзакции: `commit`, `rollback`, `refresh` вызываются только здесь. `payments.py` — `PaymentService`, `tariffs.py` — `TariffService` и сид тарифов, `money.py` — промокод и график, `signature.py` — HMAC.
 - `app/repositories/` — все запросы к БД (`get`, `find`, `add`…). Репозиторий не коммитит и не содержит бизнес-правил.

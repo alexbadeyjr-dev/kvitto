@@ -145,6 +145,10 @@ payment_installment_example = {
     "schedule": [663_334, 663_333, 663_333],
 }
 
+def _request_examples(examples: dict[str, Example]) -> dict[str, Any]:
+    return {"requestBody": {"content": {"application/json": {"examples": examples}}}}
+
+
 payment_create_examples = {
     "card_promo": Example(
         summary="Карта с промокодом",
@@ -182,6 +186,10 @@ webhook_examples = {
     "failed": Example(summary="Оплата не прошла", value={"payment_id": _payment_id, "status": "failed"}),
     "refunded": Example(summary="Возврат", value={"payment_id": _payment_id, "status": "refunded"}),
 }
+
+create_payment_openapi_extra = _request_examples(payment_create_examples)
+
+bank_webhook_openapi_extra = _request_examples(webhook_examples)
 
 
 # Тарифы

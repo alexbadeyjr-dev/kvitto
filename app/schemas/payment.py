@@ -12,17 +12,11 @@ INSTALLMENT_MONTHS_FORBIDDEN = "installment_months передаётся толь
 
 
 class PaymentCreate(BaseModel):
-    tariff_id: str = Field(min_length=1, description="Идентификатор тарифа из `GET /tariffs`")
-    email: EmailStr = Field(description="Email ученика")
-    method: Literal["card", "sbp", "installment"] = Field(description="Способ оплаты")
-    installment_months: Literal[3, 6, 12] | None = Field(
-        default=None,
-        description="Срок рассрочки в месяцах. Обязателен для `installment`, запрещён для `card` и `sbp`",
-    )
-    promo_code: str | None = Field(
-        default=None,
-        description="Промокод, регистр не важен. Сейчас действует только `KVITTO10`",
-    )
+    tariff_id: str = Field(min_length=1)
+    email: EmailStr
+    method: Literal["card", "sbp", "installment"]
+    installment_months: Literal[3, 6, 12] | None = None
+    promo_code: str | None = None
 
     @field_validator("promo_code")
     @classmethod
@@ -41,18 +35,16 @@ class PaymentCreate(BaseModel):
 class PaymentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str = Field(description="Идентификатор платежа, UUID")
-    status: PaymentStatus = Field(description="Текущий статус платежа")
-    tariff_id: str = Field(description="Идентификатор тарифа")
-    amount: int = Field(description="Сумма к оплате после скидки, в копейках")
-    discount: int = Field(description="Размер скидки в копейках, `0` без промокода")
-    method: str = Field(description="Способ оплаты: `card`, `sbp` или `installment`")
-    installment_months: int | None = Field(description="Срок рассрочки, `null` для `card` и `sbp`")
-    schedule: list[int] | None = Field(
-        description="График рассрочки в копейках, сумма равна `amount`. `null` для `card` и `sbp`",
-    )
-    email: EmailStr = Field(description="Email ученика")
-    created_at: datetime = Field(description="Время создания, ISO 8601 в UTC")
+    id: str
+    status: PaymentStatus
+    tariff_id: str
+    amount: int
+    discount: int
+    method: str
+    installment_months: int | None
+    schedule: list[int] | None
+    email: EmailStr
+    created_at: datetime
 
     @field_serializer("created_at")
     def serialize_created_at(self, value: datetime) -> str:

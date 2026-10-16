@@ -6,9 +6,9 @@ from app.schemas.payment import PaymentStatus
 
 
 class WebhookIn(BaseModel):
-    payment_id: str = Field(min_length=1, description="Идентификатор платежа")
-    status: PaymentStatus = Field(description="Новый статус платежа")
+    payment_id: str = Field(min_length=1)
+    status: PaymentStatus
 
 
 class WebhookOut(BaseModel):
-    result: Literal["ok"] = Field(description="Статус платежа изменён")
+    result: Literal["ok"]
