@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db import get_db
+from app.db.session import get_db
 from app.models import Tariff
 from app.schemas import TariffOut
 

@@ -3,15 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator, model_validator
 
-from app.money import normalize_promo
-
-
-class TariffOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    title: str
-    price: int
+from app.services.money import normalize_promo
 
 
 class PaymentCreate(BaseModel):
@@ -54,8 +46,3 @@ class PaymentOut(BaseModel):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc).isoformat()
-
-
-class WebhookIn(BaseModel):
-    payment_id: str = Field(min_length=1)
-    status: Literal["pending", "succeeded", "failed", "refunded"]

@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient, Response
 from sqlalchemy import func, select
 
-from app import db as database
+from app.db import session as database
 from app.models import Payment
 
 

@@ -2,15 +2,11 @@ from collections.abc import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 engine: Engine | None = None
 SessionLocal: sessionmaker[Session] | None = None
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 def init_engine(database_url: str) -> Engine:

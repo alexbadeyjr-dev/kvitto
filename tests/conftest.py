@@ -7,8 +7,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
 
-from app import db as database
-from app.config import get_settings
+from app.configs.settings import get_settings
+from app.db import session as database
 from app.main import app, prepare_database
 from app.models import Payment
 

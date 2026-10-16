@@ -3,10 +3,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app import db as database
-from app.config import get_settings
+from app import models  # noqa: F401  регистрирует таблицы в Base.metadata
+from app.configs.settings import get_settings
+from app.db import session as database
+from app.db.base import Base
+from app.db.seed import seed_tariffs
 from app.routers import payments, tariffs, webhooks
-from app.seed import seed_tariffs
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +24,7 @@ def prepare_database() -> None:
     if database.engine is None or database.SessionLocal is None:
         raise RuntimeError("База не инициализирована")
     if settings.database_url.startswith("sqlite"):
-        database.Base.metadata.create_all(database.engine)
+        Base.metadata.create_all(database.engine)
     with database.SessionLocal() as session:
         seed_tariffs(session)
 

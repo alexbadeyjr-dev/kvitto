@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.db import get_db
-from app.errors import InvalidTransition, PaymentNotFound
+from app.db.session import get_db
 from app.schemas import WebhookIn
-from app.services import apply_bank_status
+from app.services.exceptions import InvalidTransition, PaymentNotFound
+from app.services.payments import apply_bank_status
 
 router = APIRouter(tags=["webhooks"])
 

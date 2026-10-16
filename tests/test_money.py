@@ -1,6 +1,6 @@
 import pytest
 
-from app.money import apply_promo, build_schedule, normalize_promo
+from app.services.money import apply_promo, build_schedule, normalize_promo
 
 
 def test_schedule_puts_remainder_on_first_payments() -> None:

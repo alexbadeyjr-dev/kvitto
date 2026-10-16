@@ -3,11 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from sqlalchemy.orm import Session
 
-from app.db import get_db
-from app.errors import PaymentNotFound, TariffNotFound
+from app.db.session import get_db
 from app.models import Payment
 from app.schemas import PaymentCreate, PaymentOut
-from app.services import create_payment, get_payment
+from app.services.exceptions import PaymentNotFound, TariffNotFound
+from app.services.payments import create_payment, get_payment
 
 router = APIRouter(tags=["payments"])
 
