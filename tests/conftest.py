@@ -2,6 +2,7 @@ import os
 from collections.abc import AsyncIterator
 
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
+os.environ["WEBHOOK_SECRET"] = "test-webhook-secret"
 
 import pytest
 from httpx import ASGITransport, AsyncClient

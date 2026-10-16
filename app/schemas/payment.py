@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, f
 
 from app.services.money import normalize_promo
 
+PaymentStatus = Literal["pending", "succeeded", "failed", "refunded"]
+
 
 class PaymentCreate(BaseModel):
     tariff_id: str = Field(min_length=1)
@@ -31,7 +33,7 @@ class PaymentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    status: str
+    status: PaymentStatus
     tariff_id: str
     amount: int
     discount: int

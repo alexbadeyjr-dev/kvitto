@@ -1,11 +1,14 @@
+import json
 from collections.abc import Mapping
 
 import pytest
 from httpx import AsyncClient, Response
 from sqlalchemy import func, select
 
+from app.configs.settings import get_settings
 from app.db import session as database
 from app.models import Payment
+from app.services.signature import sign
 
 
 def payment_count() -> int:
@@ -26,6 +29,19 @@ async def post_payment(
     }
     payload.update(overrides)
     return await client.post("/payments", json=payload, headers=headers)
+
+
+async def post_webhook(
+    client: AsyncClient,
+    payload: Mapping[str, object],
+    signature: str | None = None,
+) -> Response:
+    """Отправляет вебхук. Без явной подписи подписывает тело секретом из настроек."""
+    body = json.dumps(payload).encode()
+    if signature is None:
+        signature = sign(body, get_settings().webhook_secret.get_secret_value())
+    headers = {"Content-Type": "application/json", "X-Signature": signature}
+    return await client.post("/webhooks/bank", content=body, headers=headers)
 
 
 async def test_amount_with_and_without_promo(client: AsyncClient) -> None:
@@ -123,10 +139,7 @@ async def test_forbidden_transition_returns_409_and_keeps_status(client: AsyncCl
     payment_id = created.json()["id"]
 
     async def send(status: str) -> Response:
-        return await client.post(
-            "/webhooks/bank",
-            json={"payment_id": payment_id, "status": status},
-        )
+        return await post_webhook(client, {"payment_id": payment_id, "status": status})
 
     async def current_status() -> str:
         response = await client.get(f"/payments/{payment_id}")
@@ -158,15 +171,9 @@ async def test_forbidden_transition_returns_409_and_keeps_status(client: AsyncCl
 
     failed_payment = await post_payment(client)
     failed_id = failed_payment.json()["id"]
-    failed_hook = await client.post(
-        "/webhooks/bank",
-        json={"payment_id": failed_id, "status": "failed"},
-    )
+    failed_hook = await post_webhook(client, {"payment_id": failed_id, "status": "failed"})
     assert failed_hook.status_code == 200
-    blocked = await client.post(
-        "/webhooks/bank",
-        json={"payment_id": failed_id, "status": "succeeded"},
-    )
+    blocked = await post_webhook(client, {"payment_id": failed_id, "status": "succeeded"})
     assert blocked.status_code == 409
     assert blocked.json() == {"error": "invalid_transition"}
     stayed = await client.get(f"/payments/{failed_id}")
@@ -177,10 +184,7 @@ async def test_missing_payment_returns_404(client: AsyncClient) -> None:
     missing = await client.get("/payments/missing-id")
     assert missing.status_code == 404
 
-    webhook = await client.post(
-        "/webhooks/bank",
-        json={"payment_id": "missing-id", "status": "succeeded"},
-    )
+    webhook = await post_webhook(client, {"payment_id": "missing-id", "status": "succeeded"})
     assert webhook.status_code == 404
 
     unknown_tariff = await post_payment(client, tariff_id="vip")
@@ -196,3 +200,41 @@ async def test_installment_months_match_method(client: AsyncClient) -> None:
 
     months_for_sbp = await post_payment(client, method="sbp", installment_months=6)
     assert months_for_sbp.status_code == 422
+
+
+async def test_webhook_requires_valid_signature(client: AsyncClient) -> None:
+    created = await post_payment(client)
+    payment_id = created.json()["id"]
+    payload = {"payment_id": payment_id, "status": "succeeded"}
+    body = json.dumps(payload).encode()
+
+    async def current_status() -> str:
+        return (await client.get(f"/payments/{payment_id}")).json()["status"]
+
+    unsigned = await client.post("/webhooks/bank", content=body, headers={"Content-Type": "application/json"})
+    assert unsigned.status_code == 401
+    assert await current_status() == "pending"
+
+    wrong_secret = await post_webhook(client, payload, signature=sign(body, "other-secret"))
+    assert wrong_secret.status_code == 401
+    assert await current_status() == "pending"
+
+    other_body = json.dumps({"payment_id": payment_id, "status": "failed"}).encode()
+    tampered = await post_webhook(client, payload, signature=sign(other_body, "test-webhook-secret"))
+    assert tampered.status_code == 401
+    assert await current_status() == "pending"
+
+    not_ascii = await client.post(
+        "/webhooks/bank",
+        content=body,
+        headers={"Content-Type": "application/json", "X-Signature": "подпись".encode()},
+    )
+    assert not_ascii.status_code == 401
+
+    invalid_body = await post_webhook(client, {"payment_id": payment_id, "status": "unknown"}, signature="bad")
+    assert invalid_body.status_code == 401
+
+    signed = await post_webhook(client, payload)
+    assert signed.status_code == 200
+    assert signed.json() == {"result": "ok"}
+    assert await current_status() == "succeeded"

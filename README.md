@@ -8,6 +8,8 @@
 
 Заголовок `Idempotency-Key` после успешной валидации тела возвращает уже созданный платёж с кодом `200`, даже если второе тело другое. Без заголовка каждый запрос создаёт новый платёж. Неизвестный тариф и неизвестный платёж — `404`. Неизвестный промокод и неверные поля — стандартный `422` FastAPI.
 
+Вебхук банка подписывается: заголовок `X-Signature` — HMAC-SHA256 от сырого тела запроса в hex, секрет берётся из переменной `WEBHOOK_SECRET`. Без заголовка или с неверной подписью ответ `401`, статус не меняется. Подпись проверяется раньше тела, поэтому неподписанный запрос с кривым JSON тоже получает `401`. Без `WEBHOOK_SECRET` сервис не стартует: молча принимать неподписанные вебхуки опаснее, чем упасть при запуске.
+
 ## Тесты
 
 Тесты поднимают SQLite в памяти, Docker для них не нужен.
@@ -53,12 +55,17 @@ curl -X POST http://localhost:8000/payments -H "Content-Type: application/json" 
 curl -X POST http://localhost:8000/payments -H "Content-Type: application/json" -d "{\"tariff_id\":\"standard\",\"email\":\"student@example.com\",\"method\":\"installment\",\"installment_months\":3}"
 ```
 
-Платёж и вебхук банка. Подставьте `id` из ответа создания.
+Платёж и вебхук банка. Подставьте `id` из ответа создания. В `docker compose` секрет по умолчанию — `dev-webhook-secret`.
 
 ```bash
 curl http://localhost:8000/payments/{id}
-curl -X POST http://localhost:8000/webhooks/bank -H "Content-Type: application/json" -d "{\"payment_id\":\"{id}\",\"status\":\"succeeded\"}"
+
+BODY='{"payment_id":"{id}","status":"succeeded"}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "dev-webhook-secret" | awk '{print $NF}')
+curl -X POST http://localhost:8000/webhooks/bank -H "Content-Type: application/json" -H "X-Signature: $SIG" -d "$BODY"
 ```
+
+Подпись считается от тела байт в байт: если после подписи поменять в `BODY` хоть пробел, ответ будет `401`.
 
 В PowerShell для этих команд нужна программа `curl.exe`: встроенный `curl` там вызывает другой командлет.
 
