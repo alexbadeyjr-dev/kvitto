@@ -1,8 +1,11 @@
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Annotated
 
 from fastapi import Depends, Header, Path, Query, Request
+from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
+from starlette.responses import Response
 
 from app.configs.settings import get_settings
 from app.db.session import get_db
@@ -42,6 +45,20 @@ SessionDep = Annotated[Session, Depends(get_db)]
 IdempotencyKeyDep = Annotated[str | None, Depends(get_idempotency_key)]
 
 WebhookSignatureDep = Depends(verify_signature)
+
+
+class SignedWebhookRoute(APIRoute):
+    """Проверяет подпись до разбора JSON: FastAPI читает тело раньше зависимостей ручки."""
+
+    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
+        original = super().get_route_handler()
+
+        async def handler(request: Request) -> Response:
+            await verify_signature(request, request.headers.get("x-signature"))
+            return await original(request)
+
+        return handler
+
 
 PaymentIdPath = Annotated[str, Path(min_length=1)]
 

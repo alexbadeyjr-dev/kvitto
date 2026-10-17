@@ -254,6 +254,36 @@ async def test_webhook_requires_valid_signature(client: AsyncClient) -> None:
     invalid_body = await post_webhook(client, {"payment_id": payment_id, "status": "unknown"}, signature="bad")
     assert invalid_body.status_code == 401
 
+    broken = b"not-json"
+    unsigned_broken = await client.post(
+        "/webhooks/bank",
+        content=broken,
+        headers={"Content-Type": "application/json"},
+    )
+    assert unsigned_broken.status_code == 401
+    assert unsigned_broken.json() == {"detail": "Неверная подпись"}
+    assert await current_status() == "pending"
+
+    bad_signature_broken = await client.post(
+        "/webhooks/bank",
+        content=broken,
+        headers={"Content-Type": "application/json", "X-Signature": "bad"},
+    )
+    assert bad_signature_broken.status_code == 401
+    assert await current_status() == "pending"
+
+    signed_broken = await client.post(
+        "/webhooks/bank",
+        content=broken,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": sign(broken, get_settings().webhook_secret.get_secret_value()),
+        },
+    )
+    assert signed_broken.status_code == 422
+    assert signed_broken.json()["detail"][0]["type"] == "json_invalid"
+    assert await current_status() == "pending"
+
     signed = await post_webhook(client, payload)
     assert signed.status_code == 200
     assert signed.json() == {"result": "ok"}

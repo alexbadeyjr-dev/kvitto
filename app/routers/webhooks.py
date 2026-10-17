@@ -1,11 +1,11 @@
 from fastapi import APIRouter
 
 from app import swagger
-from app.dependencies import SessionDep, WebhookSignatureDep
+from app.dependencies import SessionDep, SignedWebhookRoute, WebhookSignatureDep
 from app.schemas import WebhookIn, WebhookOut
 from app.services import payments as payment_service
 
-router = APIRouter(tags=["webhooks"])
+router = APIRouter(route_class=SignedWebhookRoute, tags=["webhooks"])
 
 
 @router.post(
