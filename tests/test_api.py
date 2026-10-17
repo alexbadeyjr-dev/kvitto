@@ -107,6 +107,26 @@ async def test_installment_schedule_sums_to_amount(client: AsyncClient, months: 
         assert body["schedule"] == [663_334, 663_333, 663_333]
 
 
+async def test_idempotency_key_longer_than_column_is_rejected(client: AsyncClient) -> None:
+    response = await post_payment(client, headers={"Idempotency-Key": "k" * 256})
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["type"] == "string_too_long"
+    assert response.json()["detail"][0]["loc"] == ["header", "Idempotency-Key"]
+    assert payment_count() == 0
+
+
+async def test_idempotency_key_at_column_limit_is_stored(client: AsyncClient) -> None:
+    key = "k" * 255
+    response = await post_payment(client, headers={"Idempotency-Key": key})
+
+    assert response.status_code == 201
+    with database.SessionLocal() as session:
+        stored = session.scalar(select(Payment).where(Payment.idempotency_key == key))
+    assert stored is not None
+    assert stored.id == response.json()["id"]
+
+
 async def test_same_idempotency_key_returns_existing_payment(client: AsyncClient) -> None:
     headers = {"Idempotency-Key": "order-42"}
     first = await post_payment(client, headers=headers)

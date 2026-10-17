@@ -7,11 +7,12 @@ from app.dependencies import (
     LimitQuery,
     OffsetQuery,
     PaymentIdPath,
-    PaymentServiceDep,
     PaymentStatusQuery,
+    SessionDep,
 )
 from app.models import Payment
 from app.schemas import PaymentCreate, PaymentOut
+from app.services import payments as payment_service
 
 router = APIRouter(tags=["payments"])
 
@@ -28,10 +29,10 @@ router = APIRouter(tags=["payments"])
 def create(
     payload: PaymentCreate,
     response: Response,
-    service: PaymentServiceDep,
+    db: SessionDep,
     idempotency_key: IdempotencyKeyDep,
 ) -> Payment:
-    payment, created = service.create_payment(payload, idempotency_key)
+    payment, created = payment_service.create_payment(db, payload, idempotency_key)
     if not created:
         response.status_code = 200
     return payment
@@ -45,13 +46,13 @@ def create(
     responses=swagger.list_payments_responses,
 )
 def read_payments(
-    service: PaymentServiceDep,
+    db: SessionDep,
     email: EmailQuery = None,
     status: PaymentStatusQuery = None,
     limit: LimitQuery = 50,
     offset: OffsetQuery = 0,
 ) -> list[Payment]:
-    return service.list_payments(email, status, limit, offset)
+    return payment_service.list_payments(db, email, status, limit, offset)
 
 
 @router.get(
@@ -61,5 +62,5 @@ def read_payments(
     description=swagger.read_payment_description,
     responses=swagger.read_payment_responses,
 )
-def read_payment(payment_id: PaymentIdPath, service: PaymentServiceDep) -> Payment:
-    return service.get_payment(payment_id)
+def read_payment(payment_id: PaymentIdPath, db: SessionDep) -> Payment:
+    return payment_service.get_payment(db, payment_id)

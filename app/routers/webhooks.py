@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
 from app import swagger
-from app.dependencies import PaymentServiceDep, WebhookSignatureDep
+from app.dependencies import SessionDep, WebhookSignatureDep
 from app.schemas import WebhookIn, WebhookOut
+from app.services import payments as payment_service
 
 router = APIRouter(tags=["webhooks"])
 
@@ -16,6 +17,6 @@ router = APIRouter(tags=["webhooks"])
     openapi_extra=swagger.bank_webhook_openapi_extra,
     dependencies=[WebhookSignatureDep],
 )
-def bank_webhook(payload: WebhookIn, service: PaymentServiceDep) -> WebhookOut:
-    service.apply_bank_status(payload.payment_id, payload.status)
+def bank_webhook(payload: WebhookIn, db: SessionDep) -> WebhookOut:
+    payment_service.apply_bank_status(db, payload.payment_id, payload.status)
     return WebhookOut(result="ok")

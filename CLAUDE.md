@@ -17,12 +17,12 @@ docker compose up --build   # Postgres + миграции + API на :8000
 
 Слои зависят только сверху вниз: роутер → сервис → репозиторий → модель.
 
-- `app/routers/` — только HTTP: принимают схемы и сервис из `dependencies.py`. Сессию и `select` не трогают, `try/except` для ошибок сервиса не пишут.
+- `app/routers/` — только HTTP: принимают схему и `SessionDep`, передают сессию в функцию сервиса. Запросов к БД не делают, `try/except` для ошибок сервиса не пишут.
 - `app/swagger.py` — тексты Swagger: общее описание с каталогом ошибок, `description`/`responses`/`openapi_extra` (примеры тел) для каждой ручки.
   Документация подключается **только в декораторе ручки** (`summary=`, `description=swagger.…`, `responses=swagger.…`, `openapi_extra=swagger.…`). В схемах, `dependencies.py` и сервисах никаких `description=`, `examples=`, `openapi_examples=` — параметры ручки описываются в её `description`.
-- `app/dependencies.py` — общие параметры ручек как `Annotated`-типы (`SessionDep`, `PaymentServiceDep`, `LimitQuery`, `IdempotencyKeyDep`…) и функции-зависимости (`verify_signature`). Новый параметр с `Query`/`Header`/`Depends` описывай там, а в ручке используй тип.
-- `app/services/` — бизнес-логика и границы транзакции: `commit`, `rollback`, `refresh` вызываются только здесь. `payments.py` — `PaymentService`, `tariffs.py` — `TariffService` и сид тарифов, `money.py` — промокод и график, `signature.py` — HMAC.
-- `app/repositories/` — все запросы к БД (`get`, `find`, `add`…). Репозиторий не коммитит и не содержит бизнес-правил.
+- `app/dependencies.py` — общие параметры ручек как `Annotated`-типы (`SessionDep`, `LimitQuery`, `IdempotencyKeyDep`…) и функции-зависимости (`verify_signature`). Новый параметр с `Query`/`Header`/`Depends` описывай там, а в ручке используй тип.
+- `app/services/` — бизнес-логика и границы транзакции: `commit`, `rollback`, `refresh` вызываются только здесь. Обычные функции, сессия — первый аргумент: ручка вызывает `payment_service.create_payment(db, ...)`. `payments.py` — платежи и статусы, `tariffs.py` — тарифы и сид, `money.py` — промокод и график, `signature.py` — HMAC.
+- `app/repositories/` — все запросы к БД, функции вида `get(session, id)`, `find(session, ...)`, `add(session, obj)`. Не коммитят и не содержат бизнес-правил.
 - `app/schemas/` — Pydantic v2, `app/models/` — SQLAlchemy 2.0, `app/db/` — engine, сессия, `Base`.
 - `alembic/versions/` — миграции. Изменил модель — добавь миграцию, старую не правь.
 

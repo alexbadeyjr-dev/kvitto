@@ -3,7 +3,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.models import Tariff
-from app.repositories import TariffRepository
+from app.repositories import tariffs as tariff_repository
 
 logger = logging.getLogger("kvitto.tariffs")
 
@@ -14,21 +14,17 @@ DEFAULT_TARIFFS: tuple[tuple[str, str, int], ...] = (
 )
 
 
-class TariffService:
-    def __init__(self, session: Session) -> None:
-        self.session = session
-        self.tariffs = TariffRepository(session)
+def list_tariffs(session: Session) -> list[Tariff]:
+    return tariff_repository.list_by_price(session)
 
-    def list_tariffs(self) -> list[Tariff]:
-        return self.tariffs.list_by_price()
 
-    def seed_defaults(self) -> None:
-        """Создаёт тарифы из DEFAULT_TARIFFS, которых ещё нет в базе."""
-        created: list[str] = []
-        for tariff_id, title, price in DEFAULT_TARIFFS:
-            if self.tariffs.get(tariff_id) is None:
-                self.tariffs.add(Tariff(id=tariff_id, title=title, price=price))
-                created.append(tariff_id)
-        self.session.commit()
-        if created:
-            logger.info("Созданы тарифы: %s", ", ".join(created))
+def seed_default_tariffs(session: Session) -> None:
+    """Создаёт тарифы из DEFAULT_TARIFFS, которых ещё нет в базе."""
+    created: list[str] = []
+    for tariff_id, title, price in DEFAULT_TARIFFS:
+        if tariff_repository.get(session, tariff_id) is None:
+            tariff_repository.add(session, Tariff(id=tariff_id, title=title, price=price))
+            created.append(tariff_id)
+    session.commit()
+    if created:
+        logger.info("Созданы тарифы: %s", ", ".join(created))

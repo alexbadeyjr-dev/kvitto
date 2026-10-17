@@ -5,6 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
+IDEMPOTENCY_KEY_MAX_LENGTH = 255
+
 
 class Payment(Base):
     __tablename__ = "payments"
@@ -18,5 +20,7 @@ class Payment(Base):
     installment_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     schedule: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
-    idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(IDEMPOTENCY_KEY_MAX_LENGTH), unique=True, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -13,7 +13,7 @@ from app.db import session as database
 from app.db.base import Base
 from app.routers import payments, tariffs, webhooks
 from app.services.exceptions import AppError
-from app.services.tariffs import TariffService
+from app.services.tariffs import seed_default_tariffs
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,7 +31,7 @@ def prepare_database() -> None:
     if settings.database_url.startswith("sqlite"):
         Base.metadata.create_all(database.engine)
     with database.SessionLocal() as session:
-        TariffService(session).seed_defaults()
+        seed_default_tariffs(session)
 
 
 @asynccontextmanager

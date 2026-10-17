@@ -4,17 +4,13 @@ from sqlalchemy.orm import Session
 from app.models import Tariff
 
 
-class TariffRepository:
-    """Запросы к таблице tariffs. Транзакцией не управляет: commit делает сервис."""
+def get(session: Session, tariff_id: str) -> Tariff | None:
+    return session.get(Tariff, tariff_id)
 
-    def __init__(self, session: Session) -> None:
-        self.session = session
 
-    def get(self, tariff_id: str) -> Tariff | None:
-        return self.session.get(Tariff, tariff_id)
+def list_by_price(session: Session) -> list[Tariff]:
+    return list(session.scalars(select(Tariff).order_by(Tariff.price)))
 
-    def list_by_price(self) -> list[Tariff]:
-        return list(self.session.scalars(select(Tariff).order_by(Tariff.price)))
 
-    def add(self, tariff: Tariff) -> None:
-        self.session.add(tariff)
+def add(session: Session, tariff: Tariff) -> None:
+    session.add(tariff)

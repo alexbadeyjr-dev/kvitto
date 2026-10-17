@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi.openapi.models import Example
 
+from app.models.payment import IDEMPOTENCY_KEY_MAX_LENGTH
 from app.schemas.payment import INSTALLMENT_MONTHS_FORBIDDEN, INSTALLMENT_MONTHS_REQUIRED
 from app.services.exceptions import (
     AppError,
@@ -74,6 +75,8 @@ API, через которое онлайн-школа принимает опл
 
 Заголовок `Idempotency-Key` в `POST /payments` защищает от двойной оплаты при повторе запроса.
 Если платёж с таким ключом уже есть, вернётся он же с кодом `200`, даже если тело другое; второй платёж не создаётся.
+Ключ не длиннее {IDEMPOTENCY_KEY_MAX_LENGTH} символов — это длина колонки.
+Более длинный заголовок получает `422`, платёж не создаётся.
 Тело при этом всё равно проверяется: невалидный запрос получит `422`. Без заголовка каждый запрос создаёт новый платёж.
 
 ### Подпись вебхука
@@ -103,7 +106,7 @@ printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | awk '{{prin
 - `{INSTALLMENT_MONTHS_FORBIDDEN}` — срок передан для `card` или `sbp`.
 
 Остальные `422` — стандартные ошибки Pydantic: неверный email, неизвестный `method` или `status`,
-срок не из 3/6/12, `limit` вне диапазона.
+срок не из 3/6/12, `limit` вне диапазона, `Idempotency-Key` длиннее {IDEMPOTENCY_KEY_MAX_LENGTH} символов.
 """
 
 openapi_tags = [
@@ -211,7 +214,8 @@ create_payment_description = f"""
 
 - Скидка по промокоду `{PROMO_CODE}` — {PROMO_PERCENT}% от цены тарифа, считается в целых копейках.
 - Для `installment` возвращается график `schedule`, его сумма ровно равна `amount`.
-- С заголовком `Idempotency-Key` повтор запроса вернёт уже созданный платёж с кодом `200`.
+- Заголовок `Idempotency-Key` не длиннее {IDEMPOTENCY_KEY_MAX_LENGTH} символов.
+  Повтор с тем же ключом вернёт уже созданный платёж с кодом `200`. Более длинный ключ — `422`.
 
 Готовые тела запроса — в списке **Examples** над редактором.
 """
